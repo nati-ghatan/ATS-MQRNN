@@ -45,11 +45,11 @@ def main():
     covariate_size = 3
     horizon_size = 24
     context_size = 10
-    quantiles = [0.8]
+    quantiles = [0.5, 0.8]
     quantile_size = len(quantiles)
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 10
+    num_epochs = 2
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
@@ -75,9 +75,13 @@ def main():
                   context_size, covariate_size, device)
 
     # Test forward method
-    print(f"\nForward results:\n################")
-    forecasts = model.forward(cur_series_covariate_tensor, next_covariate_tensor)
-    print(f"Forecasts shape:                {forecasts.shape}")
+    # print(f"\nForward results:\n################")
+    # forecasts = model.forward(cur_series_covariate_tensor, next_covariate_tensor)
+    # print(f"Forecasts shape:                {forecasts.shape}")
+
+    # Train
+    print("Starting training session, stand by... ")
+    model.train(dataset=dataset, n_epochs_per_report=1)
 
 
 if __name__ == "__main__":
