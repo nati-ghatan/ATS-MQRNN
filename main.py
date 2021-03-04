@@ -42,7 +42,7 @@ def __prepare_data_for_training(target_dataframe, horizon_size, covariate_size):
 
 def main():
     # Running parameters
-    batch_size = 1  # 128
+    batch_size = 2  # 128
     hidden_size = 8
     covariate_size = 3
     horizon_size = 24
@@ -50,7 +50,7 @@ def main():
     quantiles = [0.25, 0.5, 0.75]
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 5
+    num_epochs = 2
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
@@ -60,7 +60,8 @@ def main():
     # TODO: Need to add division into train vs. test sets (we can skip validation)
     dataset = MQRNN_dataset(target_dataframe=eldata,
                             horizon_size=horizon_size,
-                            covariate_size=covariate_size)
+                            covariate_size=covariate_size,
+                            batch_size=batch_size)
 
     # Verify dataset was created correctly
     # Comments show expected shapes FOR ALL FCTs:
@@ -82,7 +83,7 @@ def main():
 
     # Train
     print("Training model, stand by...\n###########################")
-    model.train(dataset=dataset, n_epochs_per_report=1)
+    loss_per_epoch = model.train(dataset=dataset, n_epochs_per_report=1)
 
     # Test predict method
     print(f"\nPrediction results:\n###################")
@@ -99,6 +100,12 @@ def main():
     plt.plot(list(range(horizon_size)), cur_real_vals_tensor.numpy())
     for i, quantile in enumerate(quantiles):
         plt.plot(list(range(horizon_size)), [prediction[f't+{i+1}'][quantile] for i in range(horizon_size)])
+    plt.legend(['Actual'] + [f'Q{int(q*100)}' for q in quantiles])
+    plt.show()
+
+    plt.plot(list(range(num_epochs)), loss_per_epoch)
+    plt.xlabel('Epochs')
+    plt.ylabel('Mean loss')
     plt.show()
 
     h = 1

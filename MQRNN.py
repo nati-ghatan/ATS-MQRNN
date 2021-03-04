@@ -88,7 +88,8 @@ class MQRNN(object):
 
         # Run forward
         forecasts = self.forward(cur_series_covariate_tensor=cur_series_covariate_tensor,
-                                 next_covariate_tensor=next_covariate_tensor)
+                                 next_covariate_tensor=next_covariate_tensor,
+                                 n_samples=self.batch_size)
 
         # Reshape real values tensor - [seq_len, batch_size, horizon_size]
         cur_real_vals_tensor = self.__reshape_tensor_for_decoder(input_tensor=cur_real_vals_tensor)
@@ -103,7 +104,7 @@ class MQRNN(object):
         return total_loss
 
     # Public methods
-    def forward(self, cur_series_covariate_tensor: torch.Tensor, next_covariate_tensor: torch.Tensor):
+    def forward(self, cur_series_covariate_tensor: torch.Tensor, next_covariate_tensor: torch.Tensor, n_samples: int):
         # Expected argument shapes:
         # cur_series_covariate_tensor - [seq_len, target_size + covariate_size]
         # next_covariate_tensor -       [seq_len, covariate_size * horizon_size]
@@ -114,6 +115,7 @@ class MQRNN(object):
         # Encode and reshape hidden state - [seq_len, batch_size, hidden_size]
         hidden_state = self.encoder(encoder_input)
         hidden_state = hidden_state.permute(1, 0, 2)
+        hidden_state = hidden_state.repeat(1, n_samples, 1)
 
         # Reshape next covariate tensor - [seq_len, covariate_size * horizon_size]
         decoder_covariate_input = self.__reshape_tensor_for_decoder(input_tensor=next_covariate_tensor)
@@ -121,6 +123,9 @@ class MQRNN(object):
         # Decode horizon-specific and -agnostic contexts
         # Expected input shape - [seq_len, batch_size, hidden_size+covariate_size * horizon_size]
         # Expected contexts shape - [seq_len, batch_size, (horizon_size+1) * context_size]
+        # print('-'*20)
+        # print('hidden_state', hidden_state.shape)
+        # print('decoder_covariate_input', decoder_covariate_input.shape)
         hidden_and_covariate = torch.cat([hidden_state, decoder_covariate_input], dim=2)
         contexts = self.gdecoder(hidden_and_covariate)
 
@@ -139,10 +144,15 @@ class MQRNN(object):
         ldecoder_optimizer = torch.optim.Adam(self.ldecoder.parameters(), lr=self.lr)
 
         data_iter = DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+        loss_per_epoch = []
         for epoch_index in range(self.num_epochs):
             epoch_loss_sum = 0.0
             total_sample = 0
-            for (cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor) in data_iter:
+            for i, (cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor) in enumerate(data_iter):
+                # if i in (165,166):
+                #     print('cur_series_tensor', cur_series_tensor.shape)
+                #     print('cur_covariate_tensor', cur_covariate_tensor.shape)
+                #     print('cur_real_vals_tensor', cur_real_vals_tensor.shape)
                 self.seq_len = cur_series_tensor.shape[1]
                 horizon_size = cur_covariate_tensor.shape[-1]
                 total_sample += self.batch_size * self.seq_len * horizon_size
@@ -156,9 +166,11 @@ class MQRNN(object):
                 ldecoder_optimizer.step()
                 epoch_loss_sum += loss.item()
             epoch_loss_mean = epoch_loss_sum / total_sample
+            loss_per_epoch.append(epoch_loss_mean)
             if (n_epochs_per_report >= 1) and ((epoch_index + 1) % n_epochs_per_report == 0):
                 print(f"\tEpoch {epoch_index + 1} of {self.num_epochs}, loss = {epoch_loss_mean}")
-        print("Training complete successfully!")
+        print("Training completed successfully!")
+        return loss_per_epoch
 
     def predict(self, cur_series_covariate_tensor: torch.Tensor, next_covariate_tensor: torch.Tensor):
         self.seq_len = 1
@@ -166,7 +178,8 @@ class MQRNN(object):
         # Make forecasts (no need to track gradients in prediction time)
         with torch.no_grad():
             forecasts = self.forward(cur_series_covariate_tensor=cur_series_covariate_tensor,
-                                     next_covariate_tensor=next_covariate_tensor)
+                                     next_covariate_tensor=next_covariate_tensor,
+                                     n_samples=1)
 
         # Organize results in a readable format
         horizons = {}

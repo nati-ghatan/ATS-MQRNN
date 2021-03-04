@@ -7,12 +7,20 @@ import numpy as np
 
 
 class MQRNN_dataset(Dataset):
-    def __init__(self, target_dataframe, horizon_size, covariate_size, std_epsilon=0.01):
+    def __init__(self,
+                 target_dataframe,
+                 horizon_size,
+                 covariate_size,
+                 batch_size,
+                 train_frac=0.9,
+                 std_epsilon=0.01):
         self.std_epsilon = std_epsilon
         self.target_dataframe = target_dataframe
         self.horizon_size = horizon_size
         self.covariate_size = covariate_size
+        self.batch_size = batch_size
 
+        assert 0 <= train_frac <= 1
         # Normalize data-frame using Z-score
         # self.target_dataframe = ((self.target_dataframe / self.target_dataframe[self.target_dataframe != 0].mean()) - 1) * 1000
         # self.target_dataframe = ((self.target_dataframe - self.target_dataframe[self.target_dataframe != 0].mean()) \
@@ -23,10 +31,11 @@ class MQRNN_dataset(Dataset):
 
         # Split to train and test sets
         n_series = self.target_dataframe.shape[1]
-        self.test_indices = sorted(np.random.choice(n_series, n_series // 10, replace=False))
-        self.train_indices = sorted(list(set(range(n_series)) - set(self.test_indices)))
-        self.train_target_df = self.target_dataframe.iloc[:, self.train_indices]
+        train_size = int((n_series * train_frac) - (n_series * train_frac) % self.batch_size)
+        self.train_indices = sorted(np.random.choice(n_series, train_size, replace=False))
+        self.test_indices = sorted(list(set(range(n_series)) - set(self.train_indices)))
 
+        self.train_target_df = self.target_dataframe.iloc[:, self.train_indices]
         self.test_target_df = self.target_dataframe.iloc[:, self.test_indices]
 
     def _create_covariates_df(self):
