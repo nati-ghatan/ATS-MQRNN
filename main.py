@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import pprint
+import matplotlib.pyplot as plt
 
 # Our implementation imports
 from dataset import MQRNN_dataset
@@ -49,7 +50,7 @@ def main():
     quantiles = [0.25, 0.5, 0.75]
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 1
+    num_epochs = 5
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
@@ -86,12 +87,21 @@ def main():
     # Test predict method
     print(f"\nPrediction results:\n###################")
     # Reshape input for a single FCT
-    cur_series_covariate_tensor = cur_series_covariate_tensor[0, :].reshape(1, covariate_size + 1)
-    next_covariate_tensor = next_covariate_tensor[0, :].reshape(1, covariate_size * horizon_size)
+    sample_index = 0
+    cur_real_vals_tensor = cur_real_vals_tensor[sample_index, :].reshape(horizon_size)
+    cur_series_covariate_tensor = cur_series_covariate_tensor[sample_index, :].reshape(1, covariate_size + 1)
+    next_covariate_tensor = next_covariate_tensor[sample_index, :].reshape(1, covariate_size * horizon_size)
 
     # Make prediction
     prediction = model.predict(cur_series_covariate_tensor, next_covariate_tensor)
-    pprint.pprint(prediction, width=1)
+    # pprint.pprint(prediction, width=1)
+
+    plt.plot(list(range(horizon_size)), cur_real_vals_tensor.numpy())
+    for i, quantile in enumerate(quantiles):
+        plt.plot(list(range(horizon_size)), [prediction[f't+{i+1}'][quantile] for i in range(horizon_size)])
+    plt.show()
+
+    h = 1
 
 
 if __name__ == "__main__":

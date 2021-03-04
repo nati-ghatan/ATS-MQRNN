@@ -14,9 +14,9 @@ class MQRNN_dataset(Dataset):
         self.covariate_size = covariate_size
 
         # Normalize data-frame using Z-score
-        self.target_dataframe = (self.target_dataframe / self.target_dataframe[self.target_dataframe != 0].mean()) - 1
-        # self.target_dataframe = (self.target_dataframe - self.target_dataframe[self.target_dataframe != 0].mean()) \
-        #                         / (self.target_dataframe[self.target_dataframe != 0].std() + self.std_epsilon)
+        # self.target_dataframe = ((self.target_dataframe / self.target_dataframe[self.target_dataframe != 0].mean()) - 1) * 1000
+        # self.target_dataframe = ((self.target_dataframe - self.target_dataframe[self.target_dataframe != 0].mean()) \
+        #                         / (self.target_dataframe[self.target_dataframe != 0].std() + self.std_epsilon)) * 100
 
         self.covariates_df = self._create_covariates_df()
         self.next_covariate = self._create_full_covariates_df()
