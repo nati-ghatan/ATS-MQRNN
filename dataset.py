@@ -22,7 +22,7 @@ class MQRNN_dataset(Dataset):
 
         assert 0 <= train_frac <= 1
         # Normalize data-frame using Z-score
-        # self.target_dataframe = ((self.target_dataframe / self.target_dataframe[self.target_dataframe != 0].mean()) - 1) * 1000
+        self.target_dataframe = ((self.target_dataframe / self.target_dataframe[self.target_dataframe != 0].mean()) - 1)
         # self.target_dataframe = ((self.target_dataframe - self.target_dataframe[self.target_dataframe != 0].mean()) \
         #                         / (self.target_dataframe[self.target_dataframe != 0].std() + self.std_epsilon)) * 100
 
