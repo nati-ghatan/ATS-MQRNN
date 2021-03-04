@@ -42,7 +42,7 @@ def __prepare_data_for_training(target_dataframe, horizon_size, covariate_size):
 
 def main():
     # Running parameters
-    batch_size = 16  # 128
+    batch_size = 8  # 128
     hidden_size = 8
     covariate_size = 3
     horizon_size = 24
@@ -57,7 +57,6 @@ def main():
     eldata = eldata[-1000:]  # TODO: Remove this after implementation is complete
 
     # Define dataset
-    # TODO: Need to add division into train vs. test sets (we can skip validation)
     dataset = MQRNN_dataset(target_dataframe=eldata,
                             horizon_size=horizon_size,
                             covariate_size=covariate_size,
@@ -97,17 +96,22 @@ def main():
     prediction = model.predict(cur_series_covariate_tensor, next_covariate_tensor)
     # pprint.pprint(prediction, width=1)
 
-    plt.plot(list(range(horizon_size)), cur_real_vals_tensor.numpy())
-    for i, quantile in enumerate(quantiles):
-        plt.plot(list(range(horizon_size)), [prediction[f't+{i+1}'][quantile] for i in range(horizon_size)])
-    plt.legend(['Actual'] + [f'Q{int(q*100)}' for q in quantiles])
-    plt.show()
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 7))
+    fig.suptitle('Results')
 
-    # TODO: Add part that computes loss_per_epoch (currently missing)
-    # plt.plot(list(range(num_epochs)), loss_per_epoch)
-    # plt.xlabel('Epochs')
-    # plt.ylabel('Mean loss')
-    # plt.show()
+    ax1.plot(list(range(horizon_size)), cur_real_vals_tensor.numpy())
+    for i, quantile in enumerate(quantiles):
+        ax1.plot(list(range(horizon_size)), [prediction[f't+{i + 1}'][quantile] for i in range(horizon_size)])
+    ax1.legend(['Actual'] + [f'Q{int(q * 100)}' for q in quantiles])
+    ax1.set_title("Forecast example")
+    ax1.set_xlabel("Horizon")
+    ax2.set_ylabel("Target value")
+
+    ax2.plot(list(range(num_epochs)), loss_per_epoch)
+    ax2.set_title("Loss over training epochs")
+    ax2.set_xlabel('Epochs')
+    ax2.set_ylabel('Mean loss')
+    plt.show()
 
 
 if __name__ == "__main__":
