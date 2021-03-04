@@ -59,10 +59,10 @@ class MQRNN(object):
         self.gdecoder.double()
         self.ldecoder.double()
 
-    def __reshape_tensor_for_decoder(self, input_tensor: torch.Tensor, dim_without_batch=2):
+    def __reshape_tensor_for_decoder(self, input_tensor: torch.Tensor, n_samples, dim_without_batch=2):
         # Final output shape should be: [seq_len, batch_size, input_tensor_contents]
         if len(input_tensor.shape) == dim_without_batch:
-            return input_tensor.reshape(input_tensor.shape[0], self.batch_size, input_tensor.shape[1])
+            return input_tensor.reshape(input_tensor.shape[0], n_samples, input_tensor.shape[1])
         else:
             return input_tensor.permute(1, 0, 2)
 
@@ -92,7 +92,8 @@ class MQRNN(object):
                                  n_samples=self.batch_size)
 
         # Reshape real values tensor - [seq_len, batch_size, horizon_size]
-        cur_real_vals_tensor = self.__reshape_tensor_for_decoder(input_tensor=cur_real_vals_tensor)
+        cur_real_vals_tensor = self.__reshape_tensor_for_decoder(input_tensor=cur_real_vals_tensor,
+                                                                 n_samples=self.batch_size)
 
         # Compute total quantile loss
         for i in range(self.quantile_size):
@@ -110,7 +111,7 @@ class MQRNN(object):
         # next_covariate_tensor -       [seq_len, covariate_size * horizon_size]
 
         # Reshape input data - [seq_len, batch_size, target_size + covariate_size]
-        encoder_input = self.__reshape_tensor_for_decoder(input_tensor=cur_series_covariate_tensor)
+        encoder_input = self.__reshape_tensor_for_decoder(input_tensor=cur_series_covariate_tensor, n_samples=n_samples)
 
         # Encode and reshape hidden state - [seq_len, batch_size, hidden_size]
         hidden_state = self.encoder(encoder_input)
@@ -118,7 +119,7 @@ class MQRNN(object):
         hidden_state = hidden_state.repeat(1, n_samples, 1)
 
         # Reshape next covariate tensor - [seq_len, covariate_size * horizon_size]
-        decoder_covariate_input = self.__reshape_tensor_for_decoder(input_tensor=next_covariate_tensor)
+        decoder_covariate_input = self.__reshape_tensor_for_decoder(input_tensor=next_covariate_tensor, n_samples=n_samples)
 
         # Decode horizon-specific and -agnostic contexts
         # Expected input shape - [seq_len, batch_size, hidden_size+covariate_size * horizon_size]
@@ -135,7 +136,7 @@ class MQRNN(object):
         local_decoder_input = torch.cat([contexts, decoder_covariate_input], dim=2)
         forecasts = self.ldecoder(local_decoder_input)
 
-        return forecasts.reshape(self.seq_len, self.batch_size, self.horizon_size, self.quantile_size)
+        return forecasts.reshape(self.seq_len, n_samples, self.horizon_size, self.quantile_size)
 
     def train(self, dataset: MQRNN_dataset, n_epochs_per_report=-1):
         # Initialize optimizers

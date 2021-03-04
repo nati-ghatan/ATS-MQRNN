@@ -42,7 +42,7 @@ def __prepare_data_for_training(target_dataframe, horizon_size, covariate_size):
 
 def main():
     # Running parameters
-    batch_size = 2  # 128
+    batch_size = 16  # 128
     hidden_size = 8
     covariate_size = 3
     horizon_size = 24
@@ -103,12 +103,11 @@ def main():
     plt.legend(['Actual'] + [f'Q{int(q*100)}' for q in quantiles])
     plt.show()
 
-    plt.plot(list(range(num_epochs)), loss_per_epoch)
-    plt.xlabel('Epochs')
-    plt.ylabel('Mean loss')
-    plt.show()
-
-    h = 1
+    # TODO: Add part that computes loss_per_epoch (currently missing)
+    # plt.plot(list(range(num_epochs)), loss_per_epoch)
+    # plt.xlabel('Epochs')
+    # plt.ylabel('Mean loss')
+    # plt.show()
 
 
 if __name__ == "__main__":
