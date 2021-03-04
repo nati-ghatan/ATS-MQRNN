@@ -1,6 +1,7 @@
 # General imports
 import numpy as np
 import pandas as pd
+import pprint
 
 # Our implementation imports
 from dataset import MQRNN_dataset
@@ -45,11 +46,11 @@ def main():
     covariate_size = 3
     horizon_size = 24
     context_size = 10
-    quantiles = [0.5, 0.8]
+    quantiles = [0.2, 0.8]
     quantile_size = len(quantiles)
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 2
+    num_epochs = 5
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
@@ -80,8 +81,15 @@ def main():
     # print(f"Forecasts shape:                {forecasts.shape}")
 
     # Train
-    print("Starting training session, stand by... ")
+    print("Training model, stand by...\n###########################")
     model.train(dataset=dataset, n_epochs_per_report=1)
+
+    # Test predict method
+    print(f"\nPrediction results:\n###################")
+    single_FCT_entry = cur_series_covariate_tensor[0, :].reshape(1, covariate_size + 1)
+    single_future_covariate_entry = next_covariate_tensor[0, :].reshape(1, covariate_size * horizon_size)
+    prediction = model.predict(single_FCT_entry, single_future_covariate_entry)
+    pprint.pprint(prediction, width=1)
 
 
 if __name__ == "__main__":

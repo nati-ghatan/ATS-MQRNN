@@ -160,7 +160,25 @@ class MQRNN(object):
                 print(f"\tEpoch {epoch_index + 1} of {self.num_epochs}, loss = {epoch_loss_mean}")
         print("Training complete successfully!")
 
-    def predict(self, train_target_df, train_covariate_df, test_covariate_df, col_name):
+    def predict(self, single_FCT_entry: torch.Tensor, single_future_covariate_entry: torch.Tensor):
+        self.seq_len = 1
+
+        # Make forecasts (no need to track gradients in prediction time)
+        with torch.no_grad():
+            forecasts = self.forward(cur_series_covariate_tensor=single_FCT_entry,
+                                     next_covariate_tensor=single_future_covariate_entry)
+
+        # Organize results in a readable format
+        horizons = {}
+        for horizon_index in range(self.horizon_size):
+            quantile_predictions = {}
+            for quantile_index in range(self.quantile_size):
+                quantile_name = self.quantiles[quantile_index]
+                quantile_predictions[quantile_name] = float(forecasts[:, :, horizon_index, quantile_index])
+            horizons[f"t+{horizon_index + 1}"] = quantile_predictions
+        return horizons
+
+    def predict_prev(self, train_target_df, train_covariate_df, test_covariate_df, col_name):
         # TODO: Implement this on our own
         input_target_tensor = torch.tensor(train_target_df[[col_name]].to_numpy())
         full_covariate = train_covariate_df.to_numpy()
