@@ -46,11 +46,10 @@ def main():
     covariate_size = 3
     horizon_size = 24
     context_size = 10
-    quantiles = [0.2, 0.8]
-    quantile_size = len(quantiles)
+    quantiles = [0.25, 0.5, 0.75]
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 5
+    num_epochs = 2
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
@@ -86,9 +85,12 @@ def main():
 
     # Test predict method
     print(f"\nPrediction results:\n###################")
-    single_FCT_entry = cur_series_covariate_tensor[0, :].reshape(1, covariate_size + 1)
-    single_future_covariate_entry = next_covariate_tensor[0, :].reshape(1, covariate_size * horizon_size)
-    prediction = model.predict(single_FCT_entry, single_future_covariate_entry)
+    # Reshape input for a single FCT
+    cur_series_covariate_tensor = cur_series_covariate_tensor[0, :].reshape(1, covariate_size + 1)
+    next_covariate_tensor = next_covariate_tensor[0, :].reshape(1, covariate_size * horizon_size)
+
+    # Make prediction
+    prediction = model.predict(cur_series_covariate_tensor, next_covariate_tensor)
     pprint.pprint(prediction, width=1)
 
 
