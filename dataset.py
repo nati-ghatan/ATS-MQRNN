@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import numpy as np
 
 
 class MQRNN_dataset(Dataset):
@@ -27,6 +28,13 @@ class MQRNN_dataset(Dataset):
         full_covariate = full_covariate.reshape(-1, horizon_size * covariate_size)
 
         self.next_covariate = full_covariate
+
+        # Split to train and test sets
+        n_series = dataset.target_dataframe.shape[1]
+        test_indices = sorted(np.random.choice(n_series, n_series // 10, replace=False))
+        train_indices = sorted(list(set(range(n_series)) - set(test_indices)))
+        self.train_target_df = self.target_dataframe[:, train_indices]
+        self.test_target_df = self.target_dataframe[:, test_indices]
 
     def __len__(self):
         return self.target_dataframe.shape[1]
