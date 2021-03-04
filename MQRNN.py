@@ -37,6 +37,8 @@ class MQRNN(object):
         # Define encoder-decoder sub-components
         self.__initialize_sub_components()
 
+    # Private methods
+
     def __initialize_sub_components(self):
         # Define encoder & decoder sub-components
         self.encoder = Encoder(lr=self.lr,
@@ -57,16 +59,16 @@ class MQRNN(object):
         self.gdecoder.double()
         self.ldecoder.double()
 
-    def __reshape_tensor_for_decoder(self, input_tensor, dim_without_batch=2):
+    def __reshape_tensor_for_decoder(self, input_tensor: torch.Tensor, dim_without_batch=2):
         # Final output shape should be: [seq_len, batch_size, input_tensor_contents]
         if len(input_tensor.shape) == dim_without_batch:
             return input_tensor.reshape(input_tensor.shape[0], self.batch_size, input_tensor.shape[1])
         else:
             return input_tensor.permute(1, 0, 2)
 
-    def __calc_loss(self, cur_series_covariate_tensor: torch.Tensor,
-                    next_covariate_tensor: torch.Tensor,
-                    cur_real_vals_tensor: torch.Tensor):
+    def __compute_loss(self, cur_series_covariate_tensor: torch.Tensor,
+                       next_covariate_tensor: torch.Tensor,
+                       cur_real_vals_tensor: torch.Tensor):
 
         # Initialize variables
         total_loss = torch.tensor([0.0], device=self.device)
@@ -100,34 +102,8 @@ class MQRNN(object):
 
         return total_loss
 
-    def __train_fn(self, dataset: MQRNN_dataset, n_epochs_per_report):
-        # Initialize optimizers
-        encoder_optimizer = torch.optim.Adam(self.encoder.parameters(), lr=self.lr)
-        gdecoder_optimizer = torch.optim.Adam(self.gdecoder.parameters(), lr=self.lr)
-        ldecoder_optimizer = torch.optim.Adam(self.ldecoder.parameters(), lr=self.lr)
-
-        data_iter = DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
-        for epoch_index in range(self.num_epochs):
-            epoch_loss_sum = 0.0
-            total_sample = 0
-            for (cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor) in data_iter:
-                self.seq_len = cur_series_tensor.shape[1]
-                horizon_size = cur_covariate_tensor.shape[-1]
-                total_sample += self.batch_size * self.seq_len * horizon_size
-                encoder_optimizer.zero_grad()
-                gdecoder_optimizer.zero_grad()
-                ldecoder_optimizer.zero_grad()
-                loss = self.__calc_loss(cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor)
-                loss.backward()
-                encoder_optimizer.step()
-                gdecoder_optimizer.step()
-                ldecoder_optimizer.step()
-                epoch_loss_sum += loss.item()
-            epoch_loss_mean = epoch_loss_sum / total_sample
-            if (epoch_index + 1) % n_epochs_per_report == 0:
-                print(f"\tEpoch {epoch_index + 1} of {self.num_epochs}, loss = {epoch_loss_mean}")
-
-    def forward(self, cur_series_covariate_tensor, next_covariate_tensor):
+    # Public methods
+    def forward(self, cur_series_covariate_tensor: torch.Tensor, next_covariate_tensor: torch.Tensor):
         # Expected argument shapes:
         # cur_series_covariate_tensor - [seq_len, target_size + covariate_size]
         # next_covariate_tensor -       [seq_len, covariate_size * horizon_size]
@@ -156,8 +132,32 @@ class MQRNN(object):
 
         return forecasts.reshape(self.seq_len, self.batch_size, self.horizon_size, self.quantile_size)
 
-    def train(self, dataset: MQRNN_dataset, n_epochs_per_report=5):
-        self.__train_fn(dataset=dataset, n_epochs_per_report=n_epochs_per_report)
+    def train(self, dataset: MQRNN_dataset, n_epochs_per_report=-1):
+        # Initialize optimizers
+        encoder_optimizer = torch.optim.Adam(self.encoder.parameters(), lr=self.lr)
+        gdecoder_optimizer = torch.optim.Adam(self.gdecoder.parameters(), lr=self.lr)
+        ldecoder_optimizer = torch.optim.Adam(self.ldecoder.parameters(), lr=self.lr)
+
+        data_iter = DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True, num_workers=0)
+        for epoch_index in range(self.num_epochs):
+            epoch_loss_sum = 0.0
+            total_sample = 0
+            for (cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor) in data_iter:
+                self.seq_len = cur_series_tensor.shape[1]
+                horizon_size = cur_covariate_tensor.shape[-1]
+                total_sample += self.batch_size * self.seq_len * horizon_size
+                encoder_optimizer.zero_grad()
+                gdecoder_optimizer.zero_grad()
+                ldecoder_optimizer.zero_grad()
+                loss = self.__compute_loss(cur_series_tensor, cur_covariate_tensor, cur_real_vals_tensor)
+                loss.backward()
+                encoder_optimizer.step()
+                gdecoder_optimizer.step()
+                ldecoder_optimizer.step()
+                epoch_loss_sum += loss.item()
+            epoch_loss_mean = epoch_loss_sum / total_sample
+            if (n_epochs_per_report >= 1) and ((epoch_index + 1) % n_epochs_per_report == 0):
+                print(f"\tEpoch {epoch_index + 1} of {self.num_epochs}, loss = {epoch_loss_mean}")
         print("Training complete successfully!")
 
     def predict(self, train_target_df, train_covariate_df, test_covariate_df, col_name):

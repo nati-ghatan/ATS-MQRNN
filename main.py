@@ -49,7 +49,7 @@ def main():
     quantile_size = len(quantiles)
     device = 'cpu'
     learning_rate = 1e-3
-    num_epochs = 5
+    num_epochs = 2
 
     # Load and preprocess data
     eldata = __prepare_data()  # TODO: Decide if we want/need to scale our data like Gleb did
