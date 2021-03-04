@@ -16,11 +16,11 @@ class MQRNN_dataset(Dataset):
         self.next_covariate = self._create_full_covariates_df()
 
         # Split to train and test sets
-        n_series = dataset.target_dataframe.shape[1]
+        n_series = self.target_dataframe.shape[1]
         test_indices = sorted(np.random.choice(n_series, n_series // 10, replace=False))
         train_indices = sorted(list(set(range(n_series)) - set(test_indices)))
-        self.train_target_df = self.target_dataframe[:, train_indices]
-        self.test_target_df = self.target_dataframe[:, test_indices]
+        self.train_target_df = self.target_dataframe.iloc[:, train_indices]
+        self.test_target_df = self.target_dataframe.iloc[:, test_indices]
 
     def _create_covariates_df(self):
         yearly = np.sin(2 * np.pi * self.target_dataframe.index.dayofyear / 366)
