@@ -11,23 +11,9 @@ class MQRNN_dataset(Dataset):
         self.horizon_size = horizon_size
         self.covariate_size = covariate_size
 
-        yearly = np.sin(2 * np.pi * target_dataframe.index.dayofyear / 366)
-        weekly = np.sin(2 * np.pi * target_dataframe.index.dayofweek / 7)
-        daily = np.sin(2 * np.pi * target_dataframe.index.hour / 24)
-        self.covariates_df = pd.DataFrame({'yearly': yearly,
-                                           'weekly': weekly,
-                                           'daily': daily},
-                                          index=target_dataframe.index)
+        self.covariates_df = self._create_covariates_df()
 
-        full_covariate = []
-        for i in range(1, target_dataframe.shape[0] - horizon_size + 1):
-            new_entry = self.covariates_df.iloc[i:i + horizon_size, :].to_numpy()
-            full_covariate.append(new_entry)
-
-        full_covariate = np.array(full_covariate)
-        full_covariate = full_covariate.reshape(-1, horizon_size * covariate_size)
-
-        self.next_covariate = full_covariate
+        self.next_covariate = self._create_full_covariates_df()
 
         # Split to train and test sets
         n_series = dataset.target_dataframe.shape[1]
@@ -35,6 +21,24 @@ class MQRNN_dataset(Dataset):
         train_indices = sorted(list(set(range(n_series)) - set(test_indices)))
         self.train_target_df = self.target_dataframe[:, train_indices]
         self.test_target_df = self.target_dataframe[:, test_indices]
+
+    def _create_covariates_df(self):
+        yearly = np.sin(2 * np.pi * self.target_dataframe.index.dayofyear / 366)
+        weekly = np.sin(2 * np.pi * self.target_dataframe.index.dayofweek / 7)
+        daily = np.sin(2 * np.pi * self.target_dataframe.index.hour / 24)
+        return pd.DataFrame({'yearly': yearly,
+                             'weekly': weekly,
+                             'daily': daily},
+                             index=self.target_dataframe.index)
+
+    def _create_full_covariates_df(self):
+        full_covariate = []
+        for i in range(1, self.target_dataframe.shape[0] - self.horizon_size + 1):
+            new_entry = self.covariates_df.iloc[i:i + self.horizon_size, :].to_numpy()
+            full_covariate.append(new_entry)
+
+        full_covariate = np.array(full_covariate)
+        return full_covariate.reshape(-1, self.horizon_size * self.covariate_size)
 
     def __len__(self):
         return self.target_dataframe.shape[1]
